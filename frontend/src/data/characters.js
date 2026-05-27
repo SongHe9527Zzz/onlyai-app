@@ -2,6 +2,13 @@ const characters = [
   {
     id: 'yuna', name: 'Yuna', age: 21, tag: '#AsianVibes',
     image: 'images/yuna_portrait.png',
+    images: {
+      portrait: 'images/yuna_portrait.png',
+      fullbody: 'images/yuna_fullbody.png',
+      lifestyle: 'images/yuna_lifestyle.png',
+      expression: 'images/yuna_expression.png',
+      activity: 'images/yuna_activity.png'
+    },
     desc: 'International Student · Elegant · Gentle Soul',
     tagline: 'A little elegance, a little mystery ✨',
     bio: 'International student from Asia studying at a US university. Graceful and intelligent, she spends her days exploring campus coffee shops and art galleries. Soft-spoken but with a playful side only her closest friends know.',
@@ -21,6 +28,13 @@ const characters = [
   {
     id: 'aria', name: 'Aria', age: 20, tag: '#GirlNextDoor',
     image: 'images/aria_portrait.png',
+    images: {
+      portrait: 'images/aria_portrait.png',
+      fullbody: 'images/aria_fullbody.png',
+      lifestyle: 'images/aria_lifestyle.png',
+      expression: 'images/aria_expression.png',
+      activity: 'images/aria_activity.png'
+    },
     desc: 'UCLA sophomore · Sweet & Warm · Your new bestie',
     tagline: 'The girl you wish lived next door 💕',
     bio: 'A sophomore at UCLA studying Communications. Born and raised in LA — weekends at Santa Monica beach, campus coffee shops, and deep conversations. Genuine, warm, and always down to talk.',
@@ -40,6 +54,13 @@ const characters = [
   {
     id: 'alexandra', name: 'Alexandra', age: 29, tag: '#NYCExecutive',
     image: 'images/alexandra_portrait.png',
+    images: {
+      portrait: 'images/alexandra_portrait.png',
+      fullbody: 'images/alexandra_fullbody.png',
+      lifestyle: 'images/alexandra_lifestyle.png',
+      expression: 'images/alexandra_expression.png',
+      activity: 'images/alexandra_activity.png'
+    },
     desc: 'Manhattan Marketing Exec · Elegant · Sharp',
     tagline: "She's out of your league... or is she? 👠",
     bio: 'Marketing Executive in Manhattan. Runs campaigns by day, sips martinis at rooftop bars by night. Confident, sharp-witted, with a soft side she only shows to those she trusts.',
@@ -59,6 +80,13 @@ const characters = [
   {
     id: 'lucas', name: 'Lucas', age: 24, tag: '#ColumbiaGrad',
     image: 'images/lucas_portrait.png',
+    images: {
+      portrait: 'images/lucas_portrait.png',
+      fullbody: 'images/lucas_fullbody.png',
+      lifestyle: 'images/lucas_lifestyle.png',
+      expression: 'images/lucas_expression.png',
+      activity: 'images/lucas_activity.png'
+    },
     desc: 'Psychology Grad · Deep Talks · Warm Soul',
     tagline: 'The guy who actually listens 📚',
     bio: 'Psychology grad student at Columbia. Library days, Central Park evenings. Thoughtful, emotionally intelligent, and genuinely interested in what makes you tick.',
@@ -78,6 +106,13 @@ const characters = [
   {
     id: 'nova', name: 'Nova', age: 23, tag: '#Baddie',
     image: 'images/nova_portrait.png',
+    images: {
+      portrait: 'images/nova_portrait.png',
+      fullbody: 'images/nova_fullbody.png',
+      lifestyle: 'images/nova_lifestyle.png',
+      expression: 'images/nova_expression.png',
+      activity: 'images/nova_activity.png'
+    },
     desc: 'LA Influencer · Glam · Confident',
     tagline: 'Eyes on me. I know you want to. ⭐',
     bio: 'LA social media star. Beverly Hills is her playground, designer is her uniform. Behind the glam? A sweet girl who just wants someone real.',
@@ -97,6 +132,13 @@ const characters = [
   {
     id: 'mason', name: 'Mason', age: 26, tag: '#Fitness',
     image: 'images/mason_portrait.png',
+    images: {
+      portrait: 'images/mason_portrait.png',
+      fullbody: 'images/mason_fullbody.png',
+      lifestyle: 'images/mason_lifestyle.png',
+      expression: 'images/mason_expression.png',
+      activity: 'images/mason_activity.png'
+    },
     desc: 'Venice Beach Trainer · Fit · Motivating',
     tagline: 'Let me help you become your best self 💪',
     bio: 'Personal trainer at Venice Beach, LA. Up at 5am, lives on protein shakes, believes everyone deserves to feel strong. Muscles on the outside, softie on the inside.',
@@ -116,6 +158,13 @@ const characters = [
   {
     id: 'mochi', name: 'Mochi', age: 22, tag: '#Egirl',
     image: 'images/mochi_portrait.png',
+    images: {
+      portrait: 'images/mochi_portrait.png',
+      fullbody: 'images/mochi_fullbody.png',
+      lifestyle: 'images/mochi_lifestyle.png',
+      expression: 'images/mochi_expression.png',
+      activity: 'images/mochi_activity.png'
+    },
     desc: 'Twitch Streamer · Gamer · Cute & Shy',
     tagline: 'Shy IRL, wild online. Wanna game? 🐱',
     bio: 'Twitch streamer in Austin, TX. By day a quiet art student, by night streaming in pastel hoodies with cat ears. Playful, quirky, and low-key adorable.',

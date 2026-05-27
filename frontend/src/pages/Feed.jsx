@@ -2,16 +2,21 @@ import React, { useMemo } from 'react'
 import PostCard from '../components/PostCard'
 import characters, { feedCaptions } from '../data/characters'
 
+const sceneKeys = ['fullbody', 'lifestyle', 'expression', 'activity']
+
 function buildFeed() {
   const posts = []
   for (let i = 0; i < 20; i++) {
     const c = characters[i % characters.length]
     const cap = feedCaptions[i % feedCaptions.length]
+    // Rotate through different scene images for variety
+    const sceneKey = sceneKeys[i % sceneKeys.length]
+    const imgToUse = c.images && c.images[sceneKey] ? c.images[sceneKey] : c.image
     posts.push({
       charId: c.id,
       name: c.name,
       tag: c.tag,
-      image: c.image,
+      image: imgToUse,
       caption: cap.txt,
       locked: cap.locked,
       likes: Math.floor(Math.random() * 200) + 20,

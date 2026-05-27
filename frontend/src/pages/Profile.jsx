@@ -1,7 +1,10 @@
 import React from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Paywall from '../components/Paywall'
 import characters from '../data/characters'
+
+const sceneKeys = ['fullbody', 'lifestyle', 'expression', 'activity', 'portrait']
 
 export default function Profile() {
   const { charId } = useParams()
@@ -18,7 +21,6 @@ export default function Profile() {
   }
 
   const subscribed = isSubscribed(c.id)
-  const charPrice = c.subs > 1000 ? '5.9' : '7.9'
 
   const handleSubscribe = () => {
     navigate(`/subscribe/${c.id}`)
@@ -64,14 +66,7 @@ export default function Profile() {
           ))}
         </div>
 
-        <div className="pricing-info">
-          <div className="title">💡 How pricing works</div>
-          <div className="detail">
-            <strong className="highlight">$7.9/mo</strong> platform fee → unlocks chat &amp; feed<br />
-            <strong>${charPrice}/mo</strong> character sub → goes to creator (90-95%)
-          </div>
-        </div>
-
+        {/* Subscription CTA */}
         {subscribed ? (
           <>
             <button
@@ -80,14 +75,25 @@ export default function Profile() {
             >
               💬 Start Chatting with {c.name}
             </button>
-            <button className="chat-btn" onClick={() => navigate('/')}>
-              ← Back to Feed
+            <button className="chat-btn" onClick={() => navigate('/manage-subscription')}>
+              📋 Manage Subscription
             </button>
           </>
         ) : (
-          <button className="subscribe-btn" onClick={handleSubscribe}>
-            🔓 Subscribe · $7.9 + ${charPrice} <span className="price">/mo total</span>
-          </button>
+          <>
+            <button className="subscribe-btn" onClick={handleSubscribe}>
+              🔓 Subscribe · from $7.99
+            </button>
+            <div className="free-chat-teaser" style={{
+              textAlign: 'center',
+              fontSize: 12,
+              color: 'rgba(255,255,255,0.3)',
+              marginTop: -4,
+              marginBottom: 12
+            }}>
+              💬 Try {5} free messages first, then subscribe to continue
+            </div>
+          </>
         )}
 
         <div className="relationship-bar">
@@ -108,18 +114,65 @@ export default function Profile() {
         </div>
       </div>
 
+      {/* Posts section with Paywall for locked items */}
       <div className="profile-posts-section">
         <h3>📸 Posts</h3>
         <div className="profile-posts">
-          {[0, 1, 2, 3, 4, 5].map((_, i) => (
-            <div key={i} className="grid-item">
-              🔒
-              <div className={`lock-small ${i < 2 ? 'free' : 'locked'}`}>
-                {i < 2 ? 'Free' : '🔒'}
+          {[0, 1, 2, 3, 4, 5].map((_, i) => {
+            const sceneKey = sceneKeys[i % sceneKeys.length]
+            const sceneImg = c.images && c.images[sceneKey] ? c.images[sceneKey] : null
+            return (
+              <div key={i} className="grid-item">
+                {i < 2 ? (
+                  // Free posts — always visible, show scene image
+                  <>
+                    {sceneImg ? (
+                      <img src={sceneImg} alt={`${c.name} ${sceneKey}`} className="post-thumb-img" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
+                    ) : (
+                      <div className="post-thumb-placeholder">📸</div>
+                    )}
+                    <div className="lock-small free">Free</div>
+                  </>
+                ) : (
+                  // Locked posts — show blurred preview with paywall overlay
+                  <Paywall characterId={charId} type="content">
+                    <div className="post-thumb-placeholder" style={{ position: 'relative' }}>
+                      {sceneImg ? (
+                        <img src={sceneImg} alt={`${c.name} ${sceneKey}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, filter: 'blur(8px)', opacity: 0.6 }} />
+                      ) : (
+                        <div className="post-thumb-placeholder">📸</div>
+                      )}
+                      <div className="lock-small locked" style={{ position: 'absolute', bottom: 4, right: 4 }}>🔒</div>
+                    </div>
+                  </Paywall>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
+
+        {/* Paywall CTA for all locked content */}
+        {!subscribed && (
+          <div className="profile-paywall-cta" style={{
+            marginTop: 16,
+            padding: 16,
+            background: 'rgba(196, 77, 255, 0.06)',
+            border: '1px solid rgba(196, 77, 255, 0.1)',
+            borderRadius: 12,
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>
+              🔒 <strong>{4 - Math.min(2, subscribed ? 0 : 0)} posts locked</strong> — subscribe to unlock all exclusive content
+            </div>
+            <button
+              className="subscribe-btn"
+              style={{ fontSize: 14, padding: 12 }}
+              onClick={handleSubscribe}
+            >
+              🔓 Subscribe for Full Access
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
