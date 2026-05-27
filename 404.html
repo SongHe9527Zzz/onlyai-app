@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OnlyAI</title>
+  <script>
+    // SPA redirect for GitHub Pages
+    sessionStorage.redirect = location.href;
+  </script>
+  <meta http-equiv="refresh" content="0;URL='/'">
+</head>
+<body>
+  <script>
+    // Fallback if meta refresh doesn't work
+    if (sessionStorage.redirect) {
+      window.location.href = '/onlyai-app/';
+    }
+  </script>
+</body>
+</html>
