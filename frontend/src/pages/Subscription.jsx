@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../services/api'
 import characters from '../data/characters'
@@ -7,12 +7,38 @@ import characters from '../data/characters'
 export default function Subscription() {
   const { charId } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user, refreshSubscriptions } = useAuth()
 
   const [selectedPlan, setSelectedPlan] = useState('premium')
   const [processing, setProcessing] = useState(false)
+  const [checkoutStatus, setCheckoutStatus] = useState(null) // null | 'success' | 'canceled'
 
   const c = characters.find(x => x.id === charId)
+
+  // Check if returning from Stripe Checkout
+  useEffect(() => {
+    const sessionId = searchParams.get('session_id')
+    const canceled = searchParams.get('canceled')
+    const planFromUrl = searchParams.get('plan')
+    const checkoutComplete = searchParams.get('checkout')
+
+    if (sessionId || checkoutComplete) {
+      setCheckoutStatus('success')
+      // Refresh subscriptions to update UI
+      refreshSubscriptions()
+      // Wait a moment then redirect to chat
+      setTimeout(() => {
+        if (planFromUrl) {
+          navigate(`/chat/${charId}?plan=${planFromUrl}`)
+        } else {
+          navigate(`/chat/${charId}`)
+        }
+      }, 2000)
+    } else if (canceled) {
+      setCheckoutStatus('canceled')
+    }
+  }, [searchParams, charId, navigate, refreshSubscriptions])
 
   if (!c) {
     return (
@@ -26,15 +52,16 @@ export default function Subscription() {
     {
       id: 'standard',
       name: 'Basic',
-      price: 7.9,
-      desc: 'Platform access + chat with this character',
-      features: ['Full chat access', 'View public posts', 'Basic interactions']
+      price: 7.99,
+      desc: 'Unlock chat + public posts with this character',
+      features: ['Full chat access', 'View public posts', 'Basic interactions'],
+      color: 'rgba(255,255,255,0.3)'
     },
     {
       id: 'premium',
       name: 'Premium',
-      price: 15.9,
-      desc: 'Everything in Basic + exclusive content + deeper relationship',
+      price: 15.99,
+      desc: 'Everything in Basic + exclusive locked content + deeper relationship',
       features: [
         'Everything in Basic',
         'Exclusive locked posts',
@@ -42,13 +69,14 @@ export default function Subscription() {
         'Priority response',
         'Special event content'
       ],
-      badge: 'POPULAR'
+      badge: 'POPULAR',
+      color: '#ff6b9d'
     },
     {
       id: 'vip',
       name: 'VIP',
-      price: 29.9,
-      desc: 'All access pass — the ultimate experience',
+      price: 29.99,
+      desc: 'All-access pass — the ultimate experience',
       features: [
         'Everything in Premium',
         'All exclusive content',
@@ -56,30 +84,47 @@ export default function Subscription() {
         'Custom content requests',
         'Direct creator tips'
       ],
-      badge: 'BEST VALUE'
+      badge: 'BEST VALUE',
+      color: '#c44dff'
     }
   ]
 
+  const selectedPlanData = plans.find(p => p.id === selectedPlan) || plans[1]
+
   const handleSubscribe = async () => {
     setProcessing(true)
-
     try {
-      // Try backend — if server is offline, simulate success
+      const plan = selectedPlan || 'premium'
+
+      // Try Stripe Checkout via backend
       try {
-        await api.post('/api/subscriptions', {
+        const res = await api.post('/api/payments/create-checkout-session', {
           characterId: charId,
-          plan: selectedPlan,
-          price: plans.find(p => p.id === selectedPlan).price
+          plan,
+          successUrl: `${window.location.origin}/subscribe/${charId}`,
+          cancelUrl: `${window.location.origin}/subscribe/${charId}?canceled=true`
         })
-        await refreshSubscriptions()
-      } catch {
-        // Offline mode — toast
-        const evt = new CustomEvent('onlyai:toast', {
-          detail: `🎉 Demo: Subscribed to ${c.name} (plan: ${selectedPlan}) — server integration pending`
-        })
-        window.dispatchEvent(evt)
+
+        // If we got a URL, redirect to Stripe
+        if (res.data.url) {
+          window.location.href = res.data.url
+          return // Navigation will happen, don't continue
+        }
+      } catch (apiErr) {
+        console.log('[Subscription] API call failed, falling back to dev mode:', apiErr.message)
       }
 
+      // Dev/fallback mode — create subscription directly
+      await api.post('/api/subscriptions', {
+        characterId: charId,
+        plan,
+        price: selectedPlanData.price
+      })
+      await refreshSubscriptions()
+      const evt = new CustomEvent('onlyai:toast', {
+        detail: `🎉 Demo: Subscribed to ${c.name} (${selectedPlan})`
+      })
+      window.dispatchEvent(evt)
       navigate(`/chat/${charId}`)
     } catch (err) {
       const evt = new CustomEvent('onlyai:toast', {
@@ -91,7 +136,41 @@ export default function Subscription() {
     }
   }
 
-  const characterPrice = c.subs > 1000 ? '5.9' : '7.9'
+  // ─── Success / Canceled states ─────────────────────────
+  if (checkoutStatus === 'success') {
+    return (
+      <div className="page-content" style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', padding: 40, minHeight: '60vh'
+      }}>
+        <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
+        <h2 style={{ marginBottom: 8 }}>Subscription Activated!</h2>
+        <p style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 16 }}>
+          You're now subscribed to {c.name}.<br />
+          Redirecting to chat...
+        </p>
+        <div className="spinner"></div>
+      </div>
+    )
+  }
+
+  if (checkoutStatus === 'canceled') {
+    return (
+      <div className="page-content" style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', padding: 40, minHeight: '60vh'
+      }}>
+        <div style={{ fontSize: 64, marginBottom: 16 }}>🤔</div>
+        <h2 style={{ marginBottom: 8 }}>Checkout Canceled</h2>
+        <p style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 20 }}>
+          No worries! You can subscribe anytime.
+        </p>
+        <button className="sub-pay-btn" onClick={() => setCheckoutStatus(null)}>
+          🔄 Try Again
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="page-content" style={{ paddingBottom: 120 }}>
@@ -99,51 +178,47 @@ export default function Subscription() {
         <h2>🔓 Subscribe to {c.name}</h2>
         <p className="sub-intro">
           Unlock chat, exclusive posts, and build a deeper relationship with {c.name}.
-          <br />
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>
-            Platform fee: $7.9/mo + Character sub: ${characterPrice}/mo
-          </span>
         </p>
 
-        <div style={{
-          display: 'flex',
-          gap: 12,
-          alignItems: 'center',
-          marginBottom: 20,
-          padding: 12,
-          background: 'rgba(255,255,255,0.02)',
-          borderRadius: 12
-        }}>
-          <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
-            <img src={c.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        {/* Character Info Card */}
+        <div className="sub-char-card">
+          <div className="sub-char-avatar">
+            <img src={c.image} alt={c.name} />
           </div>
-          <div>
-            <div style={{ fontWeight: 600 }}>{c.name}, {c.age}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{c.desc}</div>
+          <div className="sub-char-info">
+            <div className="sub-char-name">{c.name}, {c.age}</div>
+            <div className="sub-char-tagline">{c.tagline}</div>
           </div>
         </div>
 
+        {/* Plan Selection */}
         {plans.map(plan => (
           <div
             key={plan.id}
             className={`sub-plan ${selectedPlan === plan.id ? 'selected' : ''}`}
             onClick={() => setSelectedPlan(plan.id)}
+            style={selectedPlan === plan.id ? {
+              borderColor: plan.color,
+              background: `${plan.color}10`
+            } : {}}
           >
-            <div className="plan-name">{plan.name}</div>
-            <div className="plan-price">
-              ${plan.price}<span>/mo</span>
+            <div className="plan-row">
+              <div>
+                <div className="plan-name">{plan.name}</div>
+                <div className="plan-desc">{plan.desc}</div>
+              </div>
+              <div className="plan-price" style={{ color: plan.color }}>
+                ${plan.price}<span>/mo</span>
+              </div>
             </div>
-            <div className="plan-desc">{plan.desc}</div>
             {plan.badge && (
-              <div className="plan-badge">{plan.badge}</div>
+              <div className="plan-badge" style={{ background: `linear-gradient(135deg, ${plan.color}, ${plan.color}88)` }}>
+                {plan.badge}
+              </div>
             )}
-            <div style={{ marginTop: 10 }}>
+            <div className="plan-features">
               {plan.features.map((f, i) => (
-                <div key={i} style={{
-                  fontSize: 12,
-                  color: 'rgba(255,255,255,0.4)',
-                  padding: '2px 0'
-                }}>
+                <div key={i} className="plan-feature">
                   ✓ {f}
                 </div>
               ))}
@@ -151,27 +226,26 @@ export default function Subscription() {
           </div>
         ))}
 
+        {/* Subscribe Button */}
         <button
           className="sub-pay-btn"
           onClick={handleSubscribe}
           disabled={processing}
+          style={{
+            background: processing
+              ? 'rgba(255,255,255,0.1)'
+              : `linear-gradient(135deg, ${selectedPlanData.color || '#ff6b9d'}, ${selectedPlanData.color || '#c44dff'})`
+          }}
         >
           {processing
-            ? 'Processing...'
-            : `🔓 Subscribe — $${plans.find(p => p.id === selectedPlan).price}/mo`
+            ? '⏳ Processing...'
+            : `🔓 Subscribe — $${selectedPlanData.price}/mo`
           }
         </button>
 
-        <div style={{
-          marginTop: 16,
-          padding: 12,
-          background: 'rgba(255,255,255,0.02)',
-          borderRadius: 12,
-          fontSize: 11,
-          color: 'rgba(255,255,255,0.3)',
-          lineHeight: 1.6
-        }}>
-          🔒 Secure payment via Stripe. Cancel anytime.<br />
+        {/* Security Info */}
+        <div className="sub-security">
+          🔒 Secure payment processed by Stripe. Cancel anytime.<br />
           By subscribing you agree to our Terms of Service.
         </div>
       </div>

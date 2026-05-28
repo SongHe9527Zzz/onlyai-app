@@ -1,8 +1,10 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Paywall from '../components/Paywall'
+import TipModal from '../components/TipModal'
 import characters from '../data/characters'
+import { addFavorite, removeFavorite, checkFavorite } from '../services/api'
 
 const sceneKeys = ['fullbody', 'lifestyle', 'expression', 'activity', 'portrait']
 
@@ -10,6 +12,36 @@ export default function Profile() {
   const { charId } = useParams()
   const navigate = useNavigate()
   const { user, isSubscribed } = useAuth()
+  const [showTipModal, setShowTipModal] = useState(false)
+  const [favorited, setFavorited] = useState(false)
+  const [favLoading, setFavLoading] = useState(false)
+
+  useEffect(() => {
+    if (charId) {
+      checkFavorite(charId).then(data => {
+        setFavorited(data.favorited)
+      }).catch(() => {})
+    }
+  }, [charId])
+
+  async function toggleFavorite(e) {
+    e.stopPropagation()
+    if (favLoading) return
+    setFavLoading(true)
+    try {
+      if (favorited) {
+        await removeFavorite(charId)
+        setFavorited(false)
+      } else {
+        await addFavorite(charId)
+        setFavorited(true)
+      }
+    } catch (err) {
+      console.error('Favorite toggle failed:', err)
+    } finally {
+      setFavLoading(false)
+    }
+  }
 
   const c = characters.find(x => x.id === charId)
   if (!c) {
@@ -40,7 +72,24 @@ export default function Profile() {
         <div className="profile-avatar">
           <img src={c.image} alt={c.name} />
         </div>
-        <h1>{c.name}, {c.age}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h1 style={{ marginBottom: 0 }}>{c.name}, {c.age}</h1>
+          <button
+            onClick={toggleFavorite}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: 24,
+              cursor: favLoading ? 'wait' : 'pointer',
+              padding: 4,
+              transition: 'transform 0.2s',
+              transform: favorited ? 'scale(1.1)' : 'scale(1)'
+            }}
+            title={favorited ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            {favorited ? '⭐' : '☆'}
+          </button>
+        </div>
         <div className="tagline">{c.tagline}</div>
 
         <div className="profile-stats">
@@ -65,6 +114,14 @@ export default function Profile() {
             <span key={t}>{t}</span>
           ))}
         </div>
+
+        {/* Tip Button */}
+        <button
+          className="tip-btn-profile"
+          onClick={() => setShowTipModal(true)}
+        >
+          💸 Send a Tip to {c.name}
+        </button>
 
         {/* Subscription CTA */}
         {subscribed ? (
@@ -113,6 +170,14 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Tip Modal */}
+      {showTipModal && (
+        <TipModal
+          character={c}
+          onClose={() => setShowTipModal(false)}
+        />
+      )}
 
       {/* Posts section with Paywall for locked items */}
       <div className="profile-posts-section">

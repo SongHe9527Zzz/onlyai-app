@@ -75,12 +75,20 @@ export function setupChatWebSocket(io) {
         const reply = await generateReply(characterId, message, context)
 
         // Save AI reply
-        await saveMessage(userId, characterId, 'assistant', reply)
+        const savedMsg = await saveMessage(userId, characterId, 'assistant', reply)
 
         // Send reply back to the user
         socket.emit('chat:reply', {
           characterId,
           message: reply
+        })
+
+        // Emit conversation update event (for conversation list refresh)
+        socket.emit('conv:updated', {
+          characterId,
+          lastMessage: reply,
+          lastMessageRole: 'assistant',
+          timestamp: new Date().toISOString()
         })
 
         // Stop typing indicator
@@ -107,10 +115,113 @@ export function setupChatWebSocket(io) {
           message: fallbackReply
         })
 
+        socket.emit('conv:updated', {
+          characterId,
+          lastMessage: fallbackReply,
+          lastMessageRole: 'assistant',
+          timestamp: new Date().toISOString()
+        })
+
         socket.emit('chat:typing', {
           characterId,
           isTyping: false
         })
+      }
+    })
+
+    // Handle paid private message (character sends a paid message to user)
+    socket.on('chat:paid_message', async ({ characterId, message, price }) => {
+      if (!characterId || !message) return
+
+      const paidPrice = price || 299 // default $2.99
+
+      try {
+        // Find conversation
+        const convResult = await query(
+          'SELECT id FROM conversations WHERE user_id = $1 AND character_id = $2',
+          [userId, characterId]
+        )
+
+        if (convResult.rows.length === 0) return
+
+        const conversationId = convResult.rows[0].id
+
+        // Save paid message (locked)
+        const msgResult = await query(
+          `INSERT INTO messages (conversation_id, role, content, tokens_used, is_paid, paid_price, is_locked)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id`,
+          [conversationId, 'assistant', message, Math.ceil(message.length / 4), true, paidPrice, true]
+        )
+
+        // Notify user about paid message
+        socket.emit('chat:paid_msg_received', {
+          characterId,
+          messageId: msgResult.rows[0].id,
+          paidPrice,
+          preview: message.substring(0, 30) + '...',
+          message: '💎 You received a paid private message! Tap to unlock.'
+        })
+
+        // Emit conversation update
+        socket.emit('conv:updated', {
+          characterId,
+          lastMessage: '💎 [Paid message]',
+          lastMessageRole: 'assistant',
+          timestamp: new Date().toISOString()
+        })
+
+      } catch (err) {
+        console.error('[WS] Paid message error:', err.message)
+
+        // Mock mode fallback
+        const { rows: convs } = await query(
+          'SELECT id FROM conversations WHERE user_id = $1 AND character_id = $2',
+          [userId, characterId]
+        )
+
+        if (convs.length > 0) {
+          const msgResult = await query(
+            `INSERT INTO messages (conversation_id, role, content, tokens_used, is_paid, paid_price, is_locked)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING id`,
+            [convs[0].id, 'assistant', message, Math.ceil(message.length / 4), true, paidPrice, true]
+          )
+
+          socket.emit('chat:paid_msg_received', {
+            characterId,
+            messageId: msgResult.rows[0].id,
+            paidPrice,
+            preview: message.substring(0, 30) + '...',
+            message: '💎 You received a paid private message! Tap to unlock.'
+          })
+        }
+      }
+    })
+
+    // Handle marking messages as read via WebSocket
+    socket.on('chat:mark_read', async ({ characterId }) => {
+      if (!characterId) return
+
+      try {
+        const convResult = await query(
+          'SELECT id FROM conversations WHERE user_id = $1 AND character_id = $2',
+          [userId, characterId]
+        )
+
+        if (convResult.rows.length === 0) return
+
+        const conversationId = convResult.rows[0].id
+
+        await query(
+          `UPDATE messages SET read_at = NOW()
+           WHERE conversation_id = $1 AND role = 'assistant' AND read_at IS NULL`,
+          [conversationId]
+        )
+
+        socket.emit('conv:read', { characterId })
+      } catch (err) {
+        // Non-critical
       }
     })
 
@@ -160,13 +271,17 @@ async function saveMessage(userId, characterId, role, content) {
     const conversationId = convResult.rows[0].id
 
     // Save the message
-    await query(
+    const result = await query(
       `INSERT INTO messages (conversation_id, role, content, tokens_used)
-       VALUES ($1, $2, $3, $4)`,
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
       [conversationId, role, content, Math.ceil(content.length / 4)]
     )
+
+    return result.rows[0]
   } catch (err) {
     // Mock/offline mode — just log
     console.warn('[WS] Save message (mock):', role, content.substring(0, 30))
+    return { id: Date.now() }
   }
 }
