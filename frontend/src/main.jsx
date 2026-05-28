@@ -7,7 +7,7 @@ import './App.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter basename="/onlyai-app">
+    <BrowserRouter basename={window.location.hostname === 'localhost' ? '/' : '/onlyai-app'}>
       <AuthProvider>
         <App />
       </AuthProvider>
