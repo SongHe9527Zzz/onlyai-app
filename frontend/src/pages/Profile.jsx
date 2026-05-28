@@ -8,6 +8,14 @@ import { addFavorite, removeFavorite, checkFavorite } from '../services/api'
 
 const sceneKeys = ['fullbody', 'lifestyle', 'expression', 'activity', 'portrait']
 
+function ImgWithFallback({ src, alt, className, style, fallback }) {
+  const [failed, setFailed] = React.useState(false)
+  if (failed || !src) {
+    return <div className={className || 'post-thumb-placeholder'} style={style || { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, background: 'rgba(255,255,255,0.04)', borderRadius: 8 }}>{fallback || '📸'}</div>
+  }
+  return <img src={src} alt={alt} className={className} style={style} onError={() => setFailed(true)} />
+}
+
 export default function Profile() {
   const { charId } = useParams()
   const navigate = useNavigate()
@@ -65,12 +73,12 @@ export default function Profile() {
   return (
     <div className="page-content" style={{ paddingBottom: 120 }}>
       <div className="profile-cover">
-        <img src={c.image} alt={c.name} />
+        <ImgWithFallback src={c.image} alt={c.name} className="" style={{width:'100%',height:'100%',objectFit:'cover'}} fallback="🎭" />
         <div className="overlay"></div>
       </div>
       <div className="profile-info">
         <div className="profile-avatar">
-          <img src={c.image} alt={c.name} />
+          <ImgWithFallback src={c.image} alt={c.name} className="" style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:'50%'}} fallback="🎭" />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h1 style={{ marginBottom: 0 }}>{c.name}, {c.age}</h1>
@@ -191,22 +199,14 @@ export default function Profile() {
                 {i < 2 ? (
                   // Free posts — always visible, show scene image
                   <>
-                    {sceneImg ? (
-                      <img src={sceneImg} alt={`${c.name} ${sceneKey}`} className="post-thumb-img" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
-                    ) : (
-                      <div className="post-thumb-placeholder">📸</div>
-                    )}
+                    <ImgWithFallback src={sceneImg} alt={`${c.name} ${sceneKey}`} className="post-thumb-img" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} fallback="📸" />
                     <div className="lock-small free">Free</div>
                   </>
                 ) : (
                   // Locked posts — show blurred preview with paywall overlay
                   <Paywall characterId={charId} type="content">
                     <div className="post-thumb-placeholder" style={{ position: 'relative' }}>
-                      {sceneImg ? (
-                        <img src={sceneImg} alt={`${c.name} ${sceneKey}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, filter: 'blur(8px)', opacity: 0.6 }} />
-                      ) : (
-                        <div className="post-thumb-placeholder">📸</div>
-                      )}
+                      <ImgWithFallback src={sceneImg} alt={`${c.name} ${sceneKey}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, filter: 'blur(8px)', opacity: 0.6 }} fallback="🔒" />
                       <div className="lock-small locked" style={{ position: 'absolute', bottom: 4, right: 4 }}>🔒</div>
                     </div>
                   </Paywall>
